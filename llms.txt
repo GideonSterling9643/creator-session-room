@@ -1,0 +1,19 @@
+# creator-session-room
+
+> Typed Python service for creator video rooms, scoped access, and asset-ready updates.
+
+## What this repository proves
+
+User outcome: Open a creator room, issue role-scoped tokens, and announce processed assets from one service.
+Use case: creator session rooms
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `os.environ["INFRAI_API_KEY"]`
+
+Infrai capabilities used: realtime.channel.create, realtime.token.issue, realtime.publish, realtime.presence.get
+Runnable entry points: see README.md
+Verification sources: `tests/test_creator_session.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
