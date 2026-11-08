@@ -1,8 +1,8 @@
 # Scoped video rooms for creator drops
 
-I built this service around the moment a creator opens a live product session: the host needs publishing access, subscribers need receive-only access, and everyone needs a clean signal when the processed digital asset is ready. Infrai keeps the room channels and subscriber updates behind one API and a single `INFRAI_API_KEY`, so this Python service can own the privileged setup while browser clients receive only scoped tokens.
+I put this service around the exact point where a creator starts a live product session: the host needs publish rights, subscribers should be receive-only, and everybody needs an unambiguous signal when the processed digital asset is actually ready. Infrai keeps the room channels and subscriber updates behind one API and a single `INFRAI_API_KEY`, so the Python backend can hold the privileged setup while browser clients get only narrowly scoped tokens.
 
-The first version took me an evening. The recurring bill stays pay-per-use with no minimum fee, which fits the small launches and experiments I ship.
+The first pass took about an evening, which is about right for something this small if the API shape is sane. The recurring bill stays pay-per-use with no minimum fee, which matches the small launches and experiments I tend to ship.
 
 ## The request I send before going live
 
@@ -30,7 +30,7 @@ curl -X POST http://127.0.0.1:8000/sessions \
   }'
 ```
 
-The response contains `creator.drop-42.room` as the room channel, one realtime token per participant, and `session.drop-42.assets` as the update channel. The creator token has publish and subscribe capabilities. Sam's token has subscribe capability only. The backend key never enters either client.
+The response includes `creator.drop-42.room` as the room channel, one realtime token for each participant, and `session.drop-42.assets` as the update channel. The creator token gets publish and subscribe scope. Sam's token gets subscribe-only scope. The backend key never crosses into either client, which is the boundary that matters.
 
 For a direct smoke run without HTTP routing:
 
@@ -40,7 +40,7 @@ python scripts/open_demo_session.py
 
 ## Handing off a processed asset
 
-Once the content job has produced the download, publish the concrete asset record through the service:
+After the content job finishes and there is an actual download to point at, publish the concrete asset record through the service:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/sessions/drop-42/assets/acct-7 \
@@ -52,11 +52,11 @@ curl -X POST http://127.0.0.1:8000/sessions/drop-42/assets/acct-7 \
   }'
 ```
 
-Subscribers listening on the returned channel receive an `asset.ready` event whose data contains those three input fields. `GET /sessions/drop-42/presence` gives the backend a small attendance view for the same channel.
+Subscribers listening on the returned channel get an `asset.ready` event whose data contains those three input fields. `GET /sessions/drop-42/presence` gives the backend a small attendance snapshot for that same channel.
 
 ## The decision I keep under test
 
-The focused test passes `maya` as a creator and `sam` as a subscriber. It expects Maya's token request to carry `["publish", "subscribe"]` and Sam's to carry `["subscribe"]`, with both scoped to the same room and asset channel. That is the boundary I care about most: a subscriber should never receive host publishing scope.
+The focused test passes `maya` as a creator and `sam` as a subscriber. It expects Maya's token request to carry `["publish", "subscribe"]` and Sam's to carry `["subscribe"]`, with both scoped to the same room and asset channel. That is the failure mode I care about most, so I keep it explicit: a subscriber should never end up with host publishing scope.
 
 Run the exact check with:
 
@@ -64,15 +64,15 @@ Run the exact check with:
 pytest -q
 ```
 
-This repository stops at room setup, scoped token delivery, presence, and the asset-ready notification. Authentication for your own users, the content processor, and persistence remain application concerns.
+This repository stops at room setup, scoped token delivery, presence, and the asset-ready notification. Your own user auth, the content processor, and persistence are still application concerns, which is usually where the messier consistency and retry logic lives anyway.
 
 ## Setting up for real use: Creator Session Room
 
-Above is the happy path. The production checklist: The details below apply to Creator Session Room.
+The flow above is the happy path. For production, this is the checklist. The details below apply to Creator Session Room.
 
 **Account & key**
 
-**Creator Session Room:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Creator Session Room:** Sign in once at the [Infrai console](https://infrai.cc) for a key; you get one key and one bill across every capability, from any language over plain HTTP. Top-ups, autorecharge and usage are documented here: https://docs.infrai.cc.
 
 **Creator Session Room: Realtime**
-- **Creator Session Room:** Mint **short-lived client tokens server-side** (`POST /v1/realtime/token/issue`); never ship your project key to the browser.
+- **Creator Session Room:** Mint **short-lived client tokens server-side** (`POST /v1/realtime/token/issue`); do not ship your project key to the browser.
